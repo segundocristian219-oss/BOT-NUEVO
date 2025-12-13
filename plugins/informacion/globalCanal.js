@@ -3,38 +3,25 @@ import path from 'path'
 
 export async function before(m, { conn }) {
   try {
+    const nombreBot = global.namebot || '𝖠𝗇𝗀𝖾𝗅 𝖡𝗈𝗍'
+    const bannerFinal = './storage/img/imagen.jpg'
 
-    let nombreBot = global.namebot || '𝖠𝗇𝗀𝖾𝗅 𝖡𝗈𝗍'
-    let bannerFinal = 'storage/img/imagen.jpg'
-
-
-    const botActual = conn.user?.jid?.split('@')[0].replace(/\D/g, '')
-    const configPath = path.join('./𝖠𝗇𝗀𝖾𝗅𝖻𝗈𝗍𝗌', botActual, 'config.json')
-
-    if (fs.existsSync(configPath)) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath))
-        if (config.name) nombreBot = config.name
-        if (config.banner) bannerFinal = config.banner
-      } catch (err) {
-        console.log('⚠️ No se pudo leer config del subbot en rcanal:', err)
-      }
-    }
-
-
-    const canales = [global.idcanal, global.idcanal2]
-    const newsletterJidRandom = canales[Math.floor(Math.random() * canales.length)]
-
+    const canales = [global.idcanal, global.idcanal2].filter(Boolean)
+    const newsletterJidRandom = canales.length
+      ? canales[Math.floor(Math.random() * canales.length)]
+      : null
 
     global.rcanal = {
       contextInfo: {
         isForwarded: true,
         forwardingScore: 1,
-        forwardedNewsletterMessageInfo: {
-          newsletterJid: newsletterJidRandom,
-          serverMessageId: 100,
-          newsletterName: global.namecanal,
-        },
+        ...(newsletterJidRandom && {
+          forwardedNewsletterMessageInfo: {
+            newsletterJid: newsletterJidRandom,
+            serverMessageId: 100,
+            newsletterName: global.namecanal
+          }
+        }),
         externalAdReply: {
           title: nombreBot,
           body: global.author,
