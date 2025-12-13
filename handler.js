@@ -194,6 +194,9 @@ if (m.isGroup) {
 }
 
 const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), "plugins")
+const isCommand = m.text && global.prefix
+  ? m.text.startsWith(global.prefix)
+  : false
 for (const name in global.plugins) {
 const plugin = global.plugins[name]
 if (!plugin) continue
