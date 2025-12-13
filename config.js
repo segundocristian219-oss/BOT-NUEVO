@@ -7,7 +7,7 @@ global.owner = ['159606034665538', '245573982662762','274135666176172', '2171585
 global.mods = []
 global.prems = []
 
-global.emoji = '📎'
+global.emojis = '📎'
 global.emoji2 = '🏞️'
 global.namebot = '𝖠𝗇𝗀𝖾𝗅 𝖡𝗈𝗍'
 global.redes = 'https://whatsapp.com/channel/0029VbAe8TMHgZWirR5n1Y1P'
