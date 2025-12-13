@@ -195,8 +195,19 @@ if (m.isGroup) {
     }
 }
 
-const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), "plugins")
+const ___dirname = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "plugins"
+)
+
 for (const name in global.plugins) {
+  const plugin = global.plugins[name]
+  if (!plugin) continue
+  if (plugin.disabled) continue
+
+  if (!isCommand && typeof plugin.all !== "function") continue
+
+  const __filename = name
 const plugin = global.plugins[name]
 if (!plugin) continue
 if (plugin.disabled) continue
