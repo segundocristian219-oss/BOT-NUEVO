@@ -195,6 +195,9 @@ export async function handler(chatUpdate) {
       }
     }
 
+if (m.quoted) {
+  m.quoted = smsg(this, m.quoted) || m.quoted
+}
     const isCommand = typeof m.text === "string" && m.text.length > 0
 
     for (const name in global.plugins) {
