@@ -81,7 +81,7 @@ var handler = async (m, { conn }) => {
 
 handler.help = ['dsowner']
 handler.tags = ['owner']
-handler.command = ['delai', 'dsowner', 'clearallsession']
+handler.command = ['delai', 'dsowner', 'ds']
 handler.owner = true
 
 export default handler
