@@ -18,6 +18,7 @@ const DEFAULT_AUDIO_FORMAT = "mp3"
 const MAX_MB = 99
 
 const VALID_QUALITIES = new Set(["144", "240", "360", "720", "1080", "1440", "4k"])
+
 const pending = {}
 
 function safeName(name = "file") {
@@ -31,35 +32,47 @@ function safeName(name = "file") {
 }
 
 function fileSizeMB(filePath) {
-  return fs.statSync(filePath).size / (1024 * 1024)
+  const b = fs.statSync(filePath).size
+  return b / (1024 * 1024)
 }
 
 function ensureTmp() {
-  const tmp = path.join(path.resolve(), "tmp")
+  const tmp = path.join(process.cwd(), "tmp")
   if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true })
   return tmp
 }
 
 function extractQualityFromText(input = "") {
-  const t = input.toLowerCase()
+  const t = String(input || "").toLowerCase()
   if (t.includes("4k")) return "4k"
-  const m = t.match(/\b(144|240|360|720|1080|1440)p?\b/)
-  return m ? m[1] : ""
+  const m = t.match(/\b(144|240|360|720|1080|1440)\s*p?\b/)
+  if (m && VALID_QUALITIES.has(m[1])) return m[1]
+  return ""
 }
 
-function splitQueryAndQuality(text = "") {
-  const parts = text.trim().split(/\s+/)
-  const last = parts[parts.length - 1]?.toLowerCase()
-  if (VALID_QUALITIES.has(last.replace("p", ""))) {
-    parts.pop()
-    return { query: parts.join(" "), quality: last.replace("p", "") }
+function splitQueryAndQuality(rawText = "") {
+  const t = String(rawText || "").trim()
+  if (!t) return { query: "", quality: "" }
+  const parts = t.split(/\s+/)
+  const last = (parts[parts.length - 1] || "").toLowerCase()
+  let q = ""
+  if (last === "4k") q = "4k"
+  else {
+    const m = last.match(/^(144|240|360|720|1080|1440)p?$/i)
+    if (m) q = m[1]
   }
-  return { query: text.trim(), quality: "" }
+  if (q) {
+    parts.pop()
+    return { query: parts.join(" ").trim(), quality: q }
+  }
+  return { query: t, quality: "" }
 }
 
 function isApiUrl(url = "") {
   try {
-    return new URL(url).host === new URL(API_BASE).host
+    const u = new URL(url)
+    const b = new URL(API_BASE)
+    return u.host === b.host
   } catch {
     return false
   }
@@ -70,113 +83,197 @@ async function downloadToFile(url, filePath) {
     "User-Agent": "Mozilla/5.0",
     Accept: "*/*"
   }
+
   if (isApiUrl(url)) headers.apikey = API_KEY
 
   const res = await axios.get(url, {
     responseType: "stream",
     timeout: 180000,
     headers,
+    maxRedirects: 5,
     validateStatus: () => true
   })
 
   if (res.status >= 400) throw new Error(`HTTP_${res.status}`)
+
   await streamPipe(res.data, fs.createWriteStream(filePath))
+  return filePath
 }
 
-async function callYoutubeResolve(url, opts) {
-  const r = await axios.post(
-    `${API_BASE}/youtube/resolve`,
-    opts.type === "video"
-      ? { url, type: "video", quality: opts.quality }
-      : { url, type: "audio", format: opts.format },
-    {
-      headers: { apikey: API_KEY },
-      validateStatus: () => true
-    }
-  )
+async function callYoutubeResolve(videoUrl, { type, quality, format }) {
+  const endpoint = `${API_BASE}/youtube/resolve`
 
-  if (!r.data || r.data.status !== true) throw new Error("Error API")
-  let dl = r.data.result.media.dl_download
+  const body =
+    type === "video"
+      ? { url: videoUrl, type: "video", quality: quality || DEFAULT_VIDEO_QUALITY }
+      : { url: videoUrl, type: "audio", format: format || DEFAULT_AUDIO_FORMAT }
+
+  const r = await axios.post(endpoint, body, {
+    timeout: 120000,
+    headers: {
+      "Content-Type": "application/json",
+      apikey: API_KEY,
+      Accept: "application/json, */*"
+    },
+    validateStatus: () => true
+  })
+
+  const data = typeof r.data === "object" ? r.data : null
+  if (!data) throw new Error("Respuesta no JSON del servidor")
+
+  const ok = data.status === true || data.ok === true || data.success === true
+  if (!ok) throw new Error(data.message || data.error || "Error en la API")
+
+  const result = data.result || data.data || data
+  if (!result?.media) throw new Error("API sin media")
+
+  let dl = result.media.dl_download || ""
   if (dl.startsWith("/")) dl = API_BASE + dl
-  return dl
+
+  return {
+    title: result.title || "YouTube",
+    thumbnail: result.thumbnail || "",
+    dl_download: dl,
+    direct: result.media.direct || ""
+  }
 }
 
-let handler = async (m, { conn, text }) => {
+let handler = async (msg, { conn, text }) => {
+  const pref = global.prefixes?.[0] || "."
   const { query, quality } = splitQueryAndQuality(text)
+
   if (!query) {
-    return conn.reply(m.chat, "✳️ Usa: .play <nombre> [calidad]", m)
+    return conn.sendMessage(
+      msg.key.remoteJid,
+      { text: `✳️ Usa:\n${pref}play <término> [calidad]` },
+      { quoted: msg }
+    )
   }
 
-  await conn.sendMessage(m.chat, { react: { text: "⏳", key: m.key } })
+  await conn.sendMessage(msg.key.remoteJid, { react: { text: "⏳", key: msg.key } })
 
   const res = await yts(query)
   const video = res.videos?.[0]
-  if (!video) return conn.reply(m.chat, "❌ No se encontraron resultados", m)
+  if (!video) {
+    return conn.sendMessage(msg.key.remoteJid, { text: "❌ Sin resultados." }, { quoted: msg })
+  }
+
+  const { url: videoUrl, title, timestamp, views, author, thumbnail } = video
+  const viewsFmt = (views || 0).toLocaleString()
 
   const chosenQuality = VALID_QUALITIES.has(quality) ? quality : DEFAULT_VIDEO_QUALITY
 
   const caption = `
-🎵 Título: ${video.title}
-⏱ Duración: ${video.timestamp}
-👁 Vistas: ${video.views.toLocaleString()}
-👤 Autor: ${video.author?.name}
+📀 Info:
+❥ Título: ${title}
+❥ Duración: ${timestamp}
+❥ Vistas: ${viewsFmt}
+❥ Autor: ${author?.name || author || "Desconocido"}
+❥ Link: ${videoUrl}
 
-⚙️ Calidad: ${chosenQuality === "4k" ? "4K" : chosenQuality + "p"}
+⚙️ Calidad seleccionada: ${chosenQuality === "4k" ? "4K" : chosenQuality + "p"}
+🎵 Audio: MP3
 
+📥 Opciones:
 👍 Audio
 ❤️ Video
-📄 Audio documento
-📁 Video documento
+📄 Audio doc
+📁 Video doc
+
+💡 Tip:
+video 720
+audio
 `.trim()
 
   const preview = await conn.sendMessage(
-    m.chat,
-    { image: { url: video.thumbnail }, caption },
-    { quoted: m }
+    msg.key.remoteJid,
+    { image: { url: thumbnail }, caption },
+    { quoted: msg }
   )
 
   pending[preview.key.id] = {
-    chatId: m.chat,
-    videoUrl: video.url,
-    title: video.title,
-    quality: chosenQuality
+    chatId: msg.key.remoteJid,
+    videoUrl,
+    title,
+    commandMsg: msg,
+    videoQuality: chosenQuality
   }
 
-  if (!conn._playListener) {
-    conn._playListener = true
-    conn.ev.on("messages.upsert", async ({ messages }) => {
-      for (const msg of messages) {
-        const react = msg.message?.reactionMessage
-        if (react && pending[react.key.id]) {
-          const job = pending[react.key.id]
-          if (react.text === "👍") downloadAudio(conn, job, false, msg)
-          if (react.text === "📄") downloadAudio(conn, job, true, msg)
-          if (react.text === "❤️") downloadVideo(conn, job, false, msg)
-          if (react.text === "📁") downloadVideo(conn, job, true, msg)
+  await conn.sendMessage(msg.key.remoteJid, { react: { text: "✅", key: msg.key } })
+
+  if (!conn._playproListener) {
+    conn._playproListener = true
+
+    conn.ev.on("messages.upsert", async (ev) => {
+      for (const m of ev.messages) {
+        if (m.message?.reactionMessage) {
+          const { key, text: emoji } = m.message.reactionMessage
+          const job = pending[key.id]
+          if (job) await handleDownload(conn, job, emoji, job.commandMsg)
         }
+
+        try {
+          const context = m.message?.extendedTextMessage?.contextInfo
+          const citado = context?.stanzaId
+          const texto =
+            m.message?.conversation ||
+            m.message?.extendedTextMessage?.text ||
+            ""
+
+          const job = pending[citado]
+          if (!job) continue
+
+          const qFromReply = extractQualityFromText(texto)
+          const first = texto.trim().toLowerCase().split(/\s+/)[0]
+
+          if (["1", "audio", "4", "audiodoc"].includes(first)) {
+            const doc = first === "4" || first === "audiodoc"
+            await downloadAudio(conn, job, doc, m)
+          }
+
+          if (["2", "video", "3", "videodoc"].includes(first)) {
+            const doc = first === "3" || first === "videodoc"
+            const useQ = VALID_QUALITIES.has(qFromReply) ? qFromReply : job.videoQuality
+            await downloadVideo(conn, { ...job, videoQuality: useQ }, doc, m)
+          }
+        } catch {}
       }
     })
   }
 }
 
-async function downloadAudio(conn, job, doc, quoted) {
-  const tmp = ensureTmp()
-  const inFile = path.join(tmp, `${Date.now()}.bin`)
-  const outFile = path.join(tmp, `${safeName(job.title)}.mp3`)
+async function handleDownload(conn, job, emoji, quoted) {
+  if (emoji === "👍") return downloadAudio(conn, job, false, quoted)
+  if (emoji === "📄") return downloadAudio(conn, job, true, quoted)
+  if (emoji === "❤️") return downloadVideo(conn, job, false, quoted)
+  if (emoji === "📁") return downloadVideo(conn, job, true, quoted)
+}
 
-  const url = await callYoutubeResolve(job.videoUrl, { type: "audio", format: "mp3" })
-  await downloadToFile(url, inFile)
+async function downloadAudio(conn, job, asDocument, quoted) {
+  const resolved = await callYoutubeResolve(job.videoUrl, { type: "audio", format: DEFAULT_AUDIO_FORMAT })
+  const mediaUrl = resolved.dl_download || resolved.direct
+
+  const tmp = ensureTmp()
+  const inFile = path.join(tmp, `${Date.now()}_in.bin`)
+  const outFile = path.join(tmp, `${Date.now()}_${safeName(job.title)}.mp3`)
+
+  await downloadToFile(mediaUrl, inFile)
 
   await new Promise((res, rej) => {
-    ffmpeg(inFile).toFormat("mp3").save(outFile).on("end", res).on("error", rej)
+    ffmpeg(inFile).audioCodec("libmp3lame").audioBitrate("128k").save(outFile).on("end", res).on("error", rej)
   })
+
+  if (fileSizeMB(outFile) > MAX_MB) {
+    fs.unlinkSync(outFile)
+    return conn.sendMessage(job.chatId, { text: "❌ Audio muy pesado." }, { quoted })
+  }
 
   await conn.sendMessage(
     job.chatId,
     {
-      [doc ? "document" : "audio"]: fs.readFileSync(outFile),
+      [asDocument ? "document" : "audio"]: fs.readFileSync(outFile),
       mimetype: "audio/mpeg",
-      fileName: `${job.title}.mp3`
+      fileName: `${safeName(job.title)}.mp3`
     },
     { quoted }
   )
@@ -185,24 +282,31 @@ async function downloadAudio(conn, job, doc, quoted) {
   fs.unlinkSync(outFile)
 }
 
-async function downloadVideo(conn, job, doc, quoted) {
-  const tmp = ensureTmp()
-  const outFile = path.join(tmp, `${safeName(job.title)}_${job.quality}.mp4`)
-  const url = await callYoutubeResolve(job.videoUrl, { type: "video", quality: job.quality })
+async function downloadVideo(conn, job, asDocument, quoted) {
+  const resolved = await callYoutubeResolve(job.videoUrl, { type: "video", quality: job.videoQuality })
+  const mediaUrl = resolved.dl_download || resolved.direct
 
-  await downloadToFile(url, outFile)
+  const tmp = ensureTmp()
+  const file = path.join(tmp, `${Date.now()}_${safeName(job.title)}_${job.videoQuality}.mp4`)
+
+  await downloadToFile(mediaUrl, file)
+
+  if (fileSizeMB(file) > MAX_MB) {
+    fs.unlinkSync(file)
+    return conn.sendMessage(job.chatId, { text: "❌ Video muy pesado." }, { quoted })
+  }
 
   await conn.sendMessage(
     job.chatId,
     {
-      [doc ? "document" : "video"]: fs.readFileSync(outFile),
+      [asDocument ? "document" : "video"]: fs.readFileSync(file),
       mimetype: "video/mp4",
-      fileName: `${job.title}.mp4`
+      fileName: `${safeName(job.title)}.mp4`
     },
     { quoted }
   )
 
-  fs.unlinkSync(outFile)
+  fs.unlinkSync(file)
 }
 
 handler.help = ["play <texto>"]
