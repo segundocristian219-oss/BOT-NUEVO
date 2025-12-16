@@ -56,8 +56,6 @@ const handler = async (msg, { conn, wa }) => {
   { quoted: msg }  
 );
 
-}
-
   try {
     await conn.sendMessage(chatId, { react: { text: "🕒", key: msg.key } });
 
