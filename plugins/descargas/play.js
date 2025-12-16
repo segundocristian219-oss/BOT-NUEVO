@@ -15,7 +15,7 @@ if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true })
 const CACHE_FILE = path.join(TMP_DIR, "cache.json")
 
 const API_BASE = (process.env.API_BASE || "https://api-sky.ultraplus.click").replace(/\/+$/, "")
-const API_KEY = process.env.API_KEY || "sk_80d69172-f6c4-430d-be35-395b72e7113b"
+const API_KEY = process.env.API_KEY || "Russellxz"
 
 const MAX_CONCURRENT = 3
 const MAX_MB = 99
@@ -312,7 +312,22 @@ export default async function handler(msg, { conn, text }) {
 
       const [type, isDoc] = map[choice]
 
-      await conn.sendMessage(job.chatId, { text: `⏳ Descargando ${type}...` }, { quoted: job.commandMsg })
+      const cached = cache[job.videoUrl]?.files?.[type]
+      if (cached && fs.existsSync(cached)) {
+        await conn.sendMessage(
+          job.chatId,
+          { text: `⚡ Mandando desde cache: ${type}` },
+          { quoted: job.commandMsg }
+        )
+        await sendFile(conn, job, cached, isDoc, type, job.commandMsg)
+        continue
+      }
+
+      await conn.sendMessage(
+        job.chatId,
+        { text: `⏳ Descargando ${type}...` },
+        { quoted: job.commandMsg }
+      )
 
       let mediaUrl
       try {
