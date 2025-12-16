@@ -9,7 +9,6 @@ import crypto from "crypto"
 
 const streamPipe = promisify(pipeline)
 
-// ===== CONFIG =====
 const TMP_DIR = path.join(process.cwd(), "tmp")
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true })
 
@@ -27,11 +26,6 @@ let active = 0
 const queue = []
 const tasks = {}
 let cache = loadCache()
-
-// ===== UTILS =====
-function wait(ms) {
-  return new Promise(r => setTimeout(r, ms))
-}
 
 function safeUnlink(f) {
   try { f && fs.existsSync(f) && fs.unlinkSync(f) } catch {}
@@ -63,7 +57,6 @@ function validFile(file) {
   return true
 }
 
-// ===== CACHE =====
 function saveCache() {
   try { fs.writeFileSync(CACHE_FILE, JSON.stringify(cache)) } catch {}
 }
@@ -87,7 +80,6 @@ function loadCache() {
   }
 }
 
-// ===== QUEUE =====
 async function queueDownload(task) {
   if (active >= MAX_CONCURRENT) await new Promise(r => queue.push(r))
   active++
@@ -99,7 +91,6 @@ async function queueDownload(task) {
   }
 }
 
-// ===== API NUEVA =====
 function isApiUrl(url = "") {
   try {
     const u = new URL(url)
@@ -129,7 +120,7 @@ async function callYoutubeResolve(videoUrl, { type }) {
   })
 
   const data = typeof res.data === "object" ? res.data : null
-  if (!data) throw "Respuesta inválida de la API"
+  if (!data) throw "Respuesta inválida"
 
   const ok = data.status === true || data.success === true || data.ok === true
   if (!ok) throw (data.message || "Error API")
@@ -143,11 +134,9 @@ async function callYoutubeResolve(videoUrl, { type }) {
   return dl || null
 }
 
-// ===== DOWNLOAD =====
 async function downloadStream(url, file) {
   const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0",
     Accept: "*/*"
   }
 
@@ -168,7 +157,10 @@ async function downloadStream(url, file) {
 }
 
 async function toMp3(input) {
+  if (input.endsWith(".mp3")) return input
+
   const out = input.replace(/\.\w+$/, ".mp3")
+
   await new Promise((res, rej) =>
     ffmpeg(input)
       .audioCodec("libmp3lame")
@@ -177,6 +169,7 @@ async function toMp3(input) {
       .on("end", res)
       .on("error", rej)
   )
+
   safeUnlink(input)
   return out
 }
@@ -202,7 +195,6 @@ async function startDownload(id, key, mediaUrl) {
   return tasks[id][key]
 }
 
-// ===== SEND =====
 async function sendFile(conn, job, file, isDoc, type, quoted) {
   if (!validFile(file)) {
     await conn.sendMessage(job.chatId, { text: "❌ Archivo inválido." }, { quoted })
@@ -227,7 +219,6 @@ async function sendFile(conn, job, file, isDoc, type, quoted) {
   )
 }
 
-// ===== HANDLER =====
 const pending = {}
 
 function addPending(id, data) {
