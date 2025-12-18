@@ -325,16 +325,11 @@ global.dfail = (type, m, conn) => {
     unreg: `*𝖭𝗈 𝖤𝗌𝗍𝖺𝗌 𝖱𝖾𝗀𝗂𝗌𝗍𝗋𝖺𝖽𝗈, 𝖴𝗌𝖺 .𝗋𝖾𝗀 (𝗇𝖺𝗆𝖾) 19*`,
     restrict: `*𝖤𝗌𝗍𝖾 𝖢𝗈𝗆𝖺𝗇𝖽𝗈 𝖠𝗁 𝖲𝗂𝖽𝗈 𝖣𝖾𝗌𝖺𝖻𝗂𝗅𝗂𝗍𝖺𝖽𝗈 𝖯𝗈𝗋 𝖬𝗂 𝖢𝗋𝖾𝖺𝖽𝗈𝗋*`
   }[type]
-
-  if (msg) {
-    m.react("✖️")
-    return conn.reply(m.chat, msg, m, rcanal)
-  }
+if (msg) return conn.reply(m.chat, msg, m, rcanal).then(_ => m.react('✖️'))
 }
-
 let file = global.__filename(import.meta.url, true)
 watchFile(file, async () => {
-  unwatchFile(file)
-  console.log(chalk.magenta("Se actualizo 'handler.js'"))
-  if (global.reloadHandler) console.log(await global.reloadHandler())
+unwatchFile(file)
+console.log(chalk.magenta("Se actualizo 'handler.js'"))
+if (global.reloadHandler) console.log(await global.reloadHandler())
 })
