@@ -3,19 +3,17 @@ let handler = async (m, { conn }) => {
   await conn.sendMessage(m.chat, {
     text: '👋 Hola, elige una opción',
     footer: 'Angel Bot',
-    buttons: [
+    title: 'MENÚ',
+    buttonText: 'Abrir opciones',
+    sections: [
       {
-        buttonId: '.menu',
-        buttonText: { displayText: '📋 Menú' },
-        type: 1
-      },
-      {
-        buttonId: '.estado',
-        buttonText: { displayText: '📊 Estado' },
-        type: 1
+        title: 'Opciones',
+        rows: [
+          { title: '📋 Menú', description: 'Ver menú', rowId: '.menu' },
+          { title: '📊 Estado', description: 'Ver estado', rowId: '.estado' }
+        ]
       }
-    ],
-    headerType: 1
+    ]
   }, { quoted: m })
 
 }
