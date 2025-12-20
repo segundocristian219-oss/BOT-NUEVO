@@ -246,7 +246,7 @@ export default async function handler(msg, { conn, text }) {
   const { url, title, timestamp, views, author, thumbnail } = video
 
   const caption = `
-┏━[ *Angel Bot Music 🎧* ]━┓
+┏━[ *SHADOW BOT Music 🎧* ]━┓
 ┃🎵 Título: ${title}
 ┃⏱️ Duración: ${timestamp}
 ┃👁️ Vistas: ${(views || 0).toLocaleString()}
