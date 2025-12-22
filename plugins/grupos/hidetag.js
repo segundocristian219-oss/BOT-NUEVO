@@ -2,7 +2,7 @@ import { generateWAMessageFromContent, downloadContentFromMessage } from '@whisk
 import fetch from 'node-fetch'
 
 let thumb = null
-fetch('https://cdn.russellxz.click/45ad2c2a.jpeg')
+fetch('https://cdn.russellxz.click/c4381972.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
   .catch(() => null)
@@ -51,14 +51,13 @@ const handler = async (m, { conn, participants }) => {
 
   const fkontak = {
     key: {
-      participants: '0@s.whatsapp.net',
-      remoteJid: 'status@broadcast',
-      fromMe: false,
-      id: 'Angel'
-    },
+  remoteJid: m.chat,
+  fromMe: false,
+  id: 'Angel'
+},
     message: {
       locationMessage: {
-        name: '𝖧𝗈𝗅𝖺, 𝖲𝗈𝗒 𝐒𝐇𝐀𝐃𝐎𝐖 𝐁𝐎𝐓',
+        name: '𝖧𝗈𝗅𝖺, 𝖲𝗈𝗒 SHADOW BOT',
         jpegThumbnail: thumb
       }
     },
