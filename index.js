@@ -52,12 +52,12 @@ global.wa = {
 
 let { say } = cfonts
 console.log(chalk.magentaBright('\nMejor Bot Do Momento Start...'))
-say('Angel Bot', {
+say('SHADOW', {
 font: 'block',
 align: 'center',
 gradient: ['grey', 'white']
 })
-say('Hecho Y Optimizado Por Angel.xyz', {
+say('Hecho Y Optimizado Por Hernandez.xyz', {
 font: 'console',
 align: 'center',
 colors: ['cyan', 'magenta', 'yellow']
