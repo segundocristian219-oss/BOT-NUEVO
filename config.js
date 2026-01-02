@@ -14,12 +14,12 @@ global.prems = []
 
 global.emoji = '📎'
 global.emoji2 = '🏞️'
-global.namebot = '𝐙𝐘𝐑𝐎 𝐀𝐈'
-global.botname = '𝐙𝐘𝐑𝐎 𝐀𝐈'
-global.banner = 'https://cdn.russellxz.click/41c554f2.jpg'
-global.packname = '𝐙𝐘𝐑𝐎 𝐀𝐈'
+global.namebot = '𝓡𝓸𝓼𝓮𝓷𝓭𝓸 𝓮𝓵 𝓶𝓮𝓳𝓸𝓻'
+global.botname = '𝓡𝓸𝓼𝓮𝓷𝓭𝓸 𝓮𝓵 𝓶𝓮𝓳𝓸𝓻'
+global.banner = 'https://cdn.russellxz.click/ec73f0c6.jpg'
+global.packname = '𝓡𝓸𝓼𝓮𝓷𝓭𝓸 𝓮𝓵 𝓶𝓮𝓳𝓸𝓻'
 global.author = '𝖣𝖾𝗌𝖺𝗋𝗅𝗅𝖺𝖽𝗈 𝗉𝗈𝗋 HERNANDEZ'
-global.sessions = '𝐙𝐘𝐑𝐎 𝐀𝐈'
+global.sessions = '𝓡𝓸𝓼𝓮𝓷𝓭𝓸 𝓮𝓵 𝓶𝓮𝓳𝓸𝓻'
 
 global.APIs = {
 sky: 'https://api-sky.ultraplus.click',
