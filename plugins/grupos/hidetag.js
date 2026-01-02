@@ -2,7 +2,7 @@ import { generateWAMessageFromContent, downloadContentFromMessage } from '@whisk
 import fetch from 'node-fetch'
 
 let thumb = null
-fetch('https://files.catbox.moe/js07dr.jpg')
+fetch('https://cdn.russellxz.click/41c554f2.jpg')
   .then(r => r.arrayBuffer())
   .then(buf => thumb = Buffer.from(buf))
   .catch(() => null)
@@ -57,7 +57,7 @@ const handler = async (m, { conn, participants }) => {
 },
     message: {
       locationMessage: {
-        name: '𝖧𝗈𝗅𝖺, 𝖲𝗈𝗒 SHADOW BOT',
+        name: '𝖧𝗈𝗅𝖺, 𝖲𝗈𝗒 𝐙𝐘𝐑𝐎 𝐀𝐈',
         jpegThumbnail: thumb
       }
     },
